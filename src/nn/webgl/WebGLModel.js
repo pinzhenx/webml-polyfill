@@ -369,6 +369,13 @@ export default class WebGLModel {
         output.assign(
             input.resizeBilinear([newHeight, newWidth], alignCorner));
       } break;
+      case OperationCode.ARG_MAX: {
+        const input = operands[inputs[0]];
+        // const axis = operands[inputs[1]].value[0];
+        const axis = 3;
+        const output = operands[outputs[0]];
+        output.assign(input.argMax(axis).expandDims(axis));
+      } break;
       default: {
         throw new Error(`Operation ${op} is not supported`);
       }

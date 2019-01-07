@@ -153,7 +153,7 @@ class Utils {
     this.postOptions = newModel.postOptions || {};
     this.numClasses = newModel.numClasses;
     this.inputTensor = new Float32Array(newModel.inputSize.reduce((x,y) => x*y));
-    this.outputTensor = new Float32Array(newModel.outputSize.reduce((x,y) => x*y));
+    this.outputTensor = new Int32Array(newModel.outputSize.reduce((x,y) => x*y));
     this.tfModel = null;
   }
 }

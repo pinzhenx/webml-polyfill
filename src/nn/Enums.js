@@ -1312,6 +1312,8 @@ export const OperationCode = {
    *      condition must be satisfied: output_scale > input_scale * filter_scale.
    */
   ATROUS_DEPTHWISE_CONV_2D: 10004,
+
+  ARG_MAX: 20000,
 };
 
 export const ResultCode = {

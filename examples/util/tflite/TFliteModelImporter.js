@@ -289,6 +289,9 @@ class TFliteModelImporter {
 
           opType = this._nn.RESIZE_BILINEAR;
         } break;
+        case tflite.BuiltinOperator.ARG_MAX: {
+          opType = this._nn.ARG_MAX;
+        } break;
         default: {
           throw new Error(`operator type ${opCode} is not supported.`);
         }

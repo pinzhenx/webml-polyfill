@@ -1,18 +1,18 @@
 const availableModels = [
   {
-    modelName: 'DeepLab 513',
-    modelFile: './model/deeplab_mobilenetv2_513.tflite',
+    modelName: 'DeepLab 257 Atrous',
+    modelFile: './model/deeplab_mobilenetv2_257_dilated_argmax.tflite',
     labelsFile: './model/labels.txt',
-    inputSize: [513, 513, 3],
-    outputSize: [513, 513, 21],
+    inputSize: [257, 257, 3],
+    outputSize: [257, 257, 1],
   },
   {
     modelName: 'DeepLab 513 Atrous',
-    modelFile: './model/deeplab_mobilenetv2_513_dilated.tflite',
+    modelFile: './model/deeplab_mobilenetv2_513_dilated_argmax.tflite',
     labelsFile: './model/labels.txt',
     inputSize: [513, 513, 3],
-    outputSize: [513, 513, 21],
-  },
+    outputSize: [513, 513, 1],
+  }
 ];
 
 function main(camera) {

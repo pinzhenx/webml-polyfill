@@ -806,24 +806,13 @@ class Renderer {
     const clippedHeight = this._clippedSize[1];
     const clippedWidth = this._clippedSize[0];
     const outputWidth = segmap.outputShape[1];
-    const numClasses = segmap.outputShape[2];
     const data = segmap.data;
     const mask = new Uint8Array(clippedHeight * clippedWidth);
 
     let i = 0;
     for (let h = 0; h < clippedHeight; h++) {
-      const starth = h * outputWidth * numClasses;
       for (let w = 0; w < clippedWidth; w++) {
-        const startw = starth + w * numClasses;
-        let maxVal = Number.MIN_SAFE_INTEGER;
-        let maxIdx = 0;
-        for (let n = 0; n < numClasses; n++) {
-          if (data[startw + n] > maxVal) {
-            maxVal = data[startw + n];
-            maxIdx = n;
-          }
-        }
-        mask[i++] = maxIdx;
+        mask[i++] = data[h * outputWidth + w];
       }
     }
 
@@ -836,24 +825,14 @@ class Renderer {
     const clippedHeight = this._clippedSize[1];
     const clippedWidth = this._clippedSize[0];
     const outputWidth = segmap.outputShape[1];
-    const numClasses = segmap.outputShape[2];
     const data = segmap.data;
     const mask = new Uint8Array(clippedHeight * clippedWidth);
 
     let i = 0;
     for (let h = 0; h < clippedHeight; h++) {
-      const starth = h * outputWidth * numClasses;
       for (let w = 0; w < clippedWidth; w++) {
-        const startw = starth + w * numClasses;
-        let maxVal = Number.MIN_SAFE_INTEGER;
-        let maxIdx = 0;
-        for (let n = 0; n < numClasses; n++) {
-          if (data[startw + n] > maxVal) {
-            maxVal = data[startw + n];
-            maxIdx = n;
-          }
-        }
-        mask[i++] = maxIdx === PERSON_ID ? 255 : 0;
+        let labelId = data[h * outputWidth + w];
+        mask[i++] = labelId === PERSON_ID ? 255 : 0;
       }
     }
 

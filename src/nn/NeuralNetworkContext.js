@@ -70,6 +70,7 @@ export default class NeuralNetworkContext {
     this.TANH = OperationCode.TANH;
     this.ATROUS_CONV_2D = OperationCode.ATROUS_CONV_2D;
     this.ATROUS_DEPTHWISE_CONV_2D = OperationCode.ATROUS_DEPTHWISE_CONV_2D;
+    this.ARG_MAX = OperationCode.ARG_MAX;
   }
 
   _initFusedActivationFunctionTypes() {
