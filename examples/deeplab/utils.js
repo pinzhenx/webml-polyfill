@@ -48,12 +48,13 @@ class Utils {
   async predict() {
     if (!this.initialized) return;
     let start = performance.now();
-    await this.model.compute(this.inputTensor, this.outputTensor);
+    let outputTextures = [];
+    await this.model.computeInGPU(this.inputTensor, outputTextures);
     let elapsed = performance.now() - start;
     return {
       time: elapsed,
       segMap: {
-        data: this.outputTensor,
+        data: outputTextures,
         outputShape: this.outputSize,
         labels: this.labels,
       },

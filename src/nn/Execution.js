@@ -64,15 +64,17 @@ export default class Execution {
       throw new Error(`Invalid output index ${outputIndex}`);
     }
     let operand = model._operands[outputIndex];
-    if (!model._validateOperandValue(buffer, operand)) {
-      throw new Error(`Invalid value ${buffer}`);
-    }
     if (operand.lifetime !== OperandLifetime.MODEL_OUTPUT) {
       throw new Error(`Invalid operand lifetime ${operand.lifetime}`);
     }
     let tensor = {
       index: outputIndex,
-      buffer: buffer
+    };
+    if (typeof buffer !== 'undefined' || buffer) {
+      if (!model._validateOperandValue(buffer, operand)) {
+        throw new Error(`Invalid value ${buffer}`);
+      }
+      tensor.buffer = buffer;
     }
     this._outputs.set(index, tensor);
     return ResultCode.NO_ERROR;
@@ -81,8 +83,8 @@ export default class Execution {
   /**
    * Schedule evaluation of the execution.
    */
-  async startCompute() {
-    await this._preparedModel.execute(this._inputs, this._outputs);
+  async startCompute(outputTextures) {
+    await this._preparedModel.execute(this._inputs, this._outputs, outputTextures);
     return ResultCode.NO_ERROR;
   }
 }

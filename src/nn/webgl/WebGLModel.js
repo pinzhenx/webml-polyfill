@@ -1,6 +1,6 @@
 import {OperationCode, OperandCode, PaddingCode, FuseCode} from '../Enums'
 import * as utils from '../utils'
-import * as tf from '@tensorflow/tfjs-core';
+import * as tf from './tfjs-core/dist/index'; 
 
 export default class WebGLModel {
   /**
@@ -49,7 +49,7 @@ export default class WebGLModel {
    * @param {Map} inputs 
    * @param {Map} outputs 
    */
-  execute(inputs, outputs) {
+  execute(inputs, outputs, outputTextures) {
     if (!this._prepared) {
       throw new Error('Model is not prepared');
     }
@@ -69,8 +69,12 @@ export default class WebGLModel {
     });
 
     outputs.forEach(output => {
-      const operand = this._operands[output.index];  
-      output.buffer.set(operand.dataSync());
+      const operand = this._operands[output.index];
+      if (typeof outputTextures === 'undefined') {
+        output.buffer.set(operand.dataSync());
+      } else {
+        outputTextures.push(operand.getTexture());
+      }
     });
   }
 

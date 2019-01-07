@@ -49,6 +49,16 @@ class TFliteModelImporter {
     return 'success';
   }
 
+  async computeInGPU(inputTensor, outputTextures) {
+    this._execution.setInput(0, inputTensor);
+    this._execution.setOutput(0);
+    let error = await this._execution.startCompute(outputTextures);
+    if (error) {
+      return error;
+    }
+    return 'success';
+  }
+
   _addTensorOperands() {
     let graph = this._rawModel.subgraphs(0);
     let tensorsLength = graph.tensorsLength();
@@ -61,6 +71,7 @@ class TFliteModelImporter {
           type = this._nn.TENSOR_FLOAT32;
           typedArray = Float32Array;
         } break;
+        case tflite.TensorType.INT64:
         case tflite.TensorType.INT32: {
           type = this._nn.TENSOR_INT32;
           typedArray = Int32Array;

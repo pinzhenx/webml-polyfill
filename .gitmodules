@@ -4,3 +4,5 @@
 [submodule "src/nn/wasm/src/external/tensorflow"]
 	path = src/nn/wasm/src/external/tensorflow
 	url = https://github.com/tensorflow/tensorflow.git
+[submodule "src/nn/webgl/tfjs-core"]
+	url = https://github.com/pinzhenx/tfjs-core.git
