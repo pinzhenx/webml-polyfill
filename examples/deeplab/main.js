@@ -52,7 +52,7 @@ function main(camera) {
   let renderer = new Renderer(outputCanvas);
   renderer.setup();
 
-  let utils = new Utils();
+  let utils = new Utils(outputCanvas);
   // register updateProgress function if progressBar element exist
   utils.progressCallback = updateProgress;
 
@@ -305,10 +305,9 @@ function main(camera) {
       }
     }
   }
-
   async function predictAndDraw(imageSource) {
     clippedSize = utils.prepareInput(imageSource);
-    renderer.uploadNewTexture(imageSource, clippedSize);
+    let pixels = renderer.uploadNewTexture(imageSource, clippedSize);
     let result = await utils.predict();
     let inferTime = result.time;
     console.log(`Inference time: ${inferTime.toFixed(2)} ms`);
@@ -364,7 +363,11 @@ function main(camera) {
   function setCamResolution(resolution) {
     return navigator.mediaDevices.getUserMedia({
       audio: false,
-      video: { facingMode: 'user' }
+      video: {
+        facingMode: 'user',
+        width: resolution[0],	
+        height: resolution[1],
+      }
     }).then((stream) => {
       videoElement.srcObject = stream;
       return new Promise((resolve) => {

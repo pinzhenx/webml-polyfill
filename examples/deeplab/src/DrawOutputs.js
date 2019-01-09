@@ -613,16 +613,15 @@ class Renderer {
 
     this._imageSource = imageSource;
 
-    this.utils.bindTexture('image');
-    this.gl.texImage2D(
-      this.gl.TEXTURE_2D,
-      0,
-      this.gl.RGBA,
-      this.gl.RGBA,
-      this.gl.UNSIGNED_BYTE,
-      imageSource
-    );
-
+    // this.utils.bindTexture('image');
+    // this.gl.texImage2D(
+    //   this.gl.TEXTURE_2D,
+    //   0,
+    //   this.gl.RGBA,
+    //   this.gl.RGBA,
+    //   this.gl.UNSIGNED_BYTE,
+    //   imageSource
+    // );
   }
 
   async drawOutputs(newSegMap) {
@@ -638,21 +637,22 @@ class Renderer {
 
     // Display color labels
     if (this._effect === 'label') {
-      this._segMap = newSegMap;
-      this._predictions = this._argmaxClippedSegMap(newSegMap);
-      this.utils.bindTexture('predictions');
-      this.gl.pixelStorei(this.gl.UNPACK_ALIGNMENT, 1);
-      this.gl.texImage2D(
-        this.gl.TEXTURE_2D,
-        0,
-        this.gl.ALPHA,
-        this._clippedSize[0],
-        this._clippedSize[1],
-        0,
-        this.gl.ALPHA,
-        this.gl.UNSIGNED_BYTE,
-        this._predictions
-      );
+      this.utils.setTexture('predictions', newSegMap.data);
+      // this._segMap = newSegMap;
+      // this._predictions = this._argmaxClippedSegMap(newSegMap);
+      // this.utils.bindTexture('predictions');
+      // this.gl.pixelStorei(this.gl.UNPACK_ALIGNMENT, 1);
+      // this.gl.texImage2D(
+      //   this.gl.TEXTURE_2D,
+      //   0,
+      //   this.gl.ALPHA,
+      //   this._clippedSize[0],
+      //   this._clippedSize[1],
+      //   0,
+      //   this.gl.ALPHA,
+      //   this.gl.UNSIGNED_BYTE,
+      //   this._predictions
+      // );
       this._drawColorLabel();
     }
 
@@ -662,19 +662,20 @@ class Renderer {
       this._predictions = this._argmaxClippedSegMapPerson(newSegMap);
       if (this._guidedFilterRadius === 0) {
         // guided filter is disabled
-        this.utils.bindTexture('predictions');
-        this.gl.pixelStorei(this.gl.UNPACK_ALIGNMENT, 1);
-        this.gl.texImage2D(
-          this.gl.TEXTURE_2D,
-          0,
-          this.gl.ALPHA,
-          this._clippedSize[0],
-          this._clippedSize[1],
-          0,
-          this.gl.ALPHA,
-          this.gl.UNSIGNED_BYTE,
-          this._predictions
-        );
+        this.utils.setTexture('predictions', refinedMask);
+        // this.utils.bindTexture('predictions');
+        // this.gl.pixelStorei(this.gl.UNPACK_ALIGNMENT, 1);
+        // this.gl.texImage2D(
+        //   this.gl.TEXTURE_2D,
+        //   0,
+        //   this.gl.ALPHA,
+        //   this._clippedSize[0],
+        //   this._clippedSize[1],
+        //   0,
+        //   this.gl.ALPHA,
+        //   this.gl.UNSIGNED_BYTE,
+        //   this._predictions
+        // );
       } else {
         // guided filter is enabled
         let refinedMask = this.guidedFilter.apply(

@@ -1,5 +1,5 @@
 class Utils {
-  constructor() {
+  constructor(canvas) {
     this.tfModel;
     this.labels;
     this.model;
@@ -8,15 +8,18 @@ class Utils {
     this.progressCallback;
     this.modelFile;
     this.labelsFile;
-    this.inputSize;
-    this.outputSize;
+    this.inputSize = [257, 257, 3];
+    this.outputSize = [257, 257, 1];
     this.preOptions;
     this.postOptions;
-    // this.preprocessCanvas = new OffscreenCanvas(224, 224);
-    this.preprocessCanvas = document.createElement('canvas');
-    this.preprocessCtx = this.preprocessCanvas.getContext('2d');    
+    this.canvas = canvas;
+    this.gl = canvas.getContext('webgl2');
+    this.gl_utils = new WebGLUtils(this.gl);
+    this.preprocessShader = null;
 
     this.initialized = false;
+
+    this.setupPreprocessShader();
   }
 
   async init(backend, prefer) {
@@ -54,7 +57,7 @@ class Utils {
     return {
       time: elapsed,
       segMap: {
-        data: outputTextures,
+        data: outputTextures[0],
         outputShape: this.outputSize,
         labels: this.labels,
       },
@@ -103,12 +106,63 @@ class Utils {
     }
   }
 
+
+  setupPreprocessShader() {
+
+    const vs =
+      `#version 300 es
+      in vec4 a_pos;
+      out vec2 v_texcoord;
+
+      void main() {
+        gl_Position = a_pos;
+        v_texcoord = a_pos.xy * vec2(0.5, -0.5) + 0.5;
+      }`;
+
+    const fs =
+      `#version 300 es
+      precision highp float;
+      out vec4 out_color;
+
+      uniform sampler2D u_image;
+
+      in vec2 v_texcoord;
+
+      void main() {
+        out_color = texture(u_image, v_texcoord) / 127.5 - 1.0;
+      }`;
+
+    this.preprocessShader = new Shader(this.gl, vs, fs);
+    this.preprocessShader.use();
+    // this.preprocessShader.set1i('u_length', this._colorPalette.length / 3);
+
+    this.gl_utils.createAndBindTexture({
+      name: 'image',
+      filter: this.gl.LINEAR,
+    });
+
+    this.gl_utils.createTexInFrameBuffer('preprocessResult',
+      [{
+        name: 'preprocessResult',
+        width: this.inputSize[1],
+        height: this.inputSize[0],
+        // filter: this.gl.NEAREST,
+        type: this.gl.FLOAT,
+        internalformat: this.gl.RGBA32F,
+      }]
+    );
+  }
+
   prepareInput(imgSrc) {
     const height = this.inputSize[0];
     const width = this.inputSize[1];
 
-    this.preprocessCanvas.width = width;
-    this.preprocessCanvas.height = height;
+    this.canvas.width = width;
+    this.canvas.height = height;
+    this.gl_utils.setViewport(
+      this.gl.drawingBufferWidth,
+      this.gl.drawingBufferHeight
+    );
 
     let imWidth = imgSrc.naturalWidth | imgSrc.videoWidth;
     let imHeight = imgSrc.naturalHeight | imgSrc.videoHeight;
@@ -117,24 +171,28 @@ class Utils {
     let scaledWidth = Math.floor(imWidth / resizeRatio);
     let scaledHeight = Math.floor(imHeight / resizeRatio);
 
-    // better to keep resizeRatio at 1
-    // avoid scaling images in `drawImage`, especially in real time scenarios
-    this.preprocessCtx.drawImage(imgSrc, 0, 0, scaledWidth, scaledHeight);
-    const pixels = this.preprocessCtx.getImageData(0, 0, width, height).data;
-
-    const tensor = this.inputTensor;
-    const channels = 3;
-    const imageChannels = 4;
-
-    // NHWC layout
-    for (let y = 0; y < height; ++y) {
-      for (let x = 0; x < width; ++x) {
-        for (let c = 0; c < channels; ++c) {
-          let value = pixels[y*width*imageChannels + x*imageChannels + c];
-          tensor[y*width*channels + x*channels + c] = value / 127.5 - 1;
-        }
-      }
-    }
+    this.gl_utils.bindInputTextures(['image']);
+    // this.gl_utils.bindTexture('image');
+    this.gl.texImage2D(
+      this.gl.TEXTURE_2D,
+      0,
+      this.gl.RGBA,
+      this.gl.RGBA,
+      this.gl.UNSIGNED_BYTE,
+      imgSrc
+    );
+    this.preprocessShader.use();
+    this.gl_utils.bindFramebuffer('preprocessResult');
+    this.gl_utils.render();
+    this.gl.readPixels(
+      0,
+      0,
+      width,
+      height,
+      this.gl.RGB,
+      this.gl.FLOAT,
+      this.inputTensor
+    );
 
     return [scaledWidth, scaledHeight];
   }
