@@ -1,19 +1,32 @@
 const availableModels = [
-  {
-    modelName: 'DeepLab 513',
-    modelFile: './model/deeplab_mobilenetv2_513.tflite',
-    labelsFile: './model/labels.txt',
-    inputSize: [513, 513, 3],
-    outputSize: [513, 513, 21],
-  },
-  {
-    modelName: 'DeepLab 513 Atrous',
-    modelFile: './model/deeplab_mobilenetv2_513_dilated.tflite',
-    labelsFile: './model/labels.txt',
-    inputSize: [513, 513, 3],
-    outputSize: [513, 513, 21],
-  },
+  {size: 257, os: 4},
+  {size: 257, os: 8},
+  {size: 257, os: 16},
+  {size: 321, os: 4},
+  {size: 321, os: 8},
+  {size: 321, os: 16},
+  {size: 513, os: 8},
+  {size: 513, os: 16},
+  {size: 513, os: 32},
+  {size: 1024, os: 32},
 ];
+for (let m of availableModels) {
+  m.inputSize = [m.size, m.size, 3];
+  m.outputSize = [m.size, m.size, 21];
+  m.labelsFile = './model/labels.txt';
+  m.modelName = `DeepLab ${m.size} Atrous OS${m.os}`;
+  m.modelFile = `./model/${m.size}os${m.os}/deeplab_dilated.tflite`;
+}
+
+availableModels.push(...[
+  {
+    modelName: 'DeepLab 513 Atrous OS8 DM05',
+    modelFile: './model/deeplab_mobilenetv2_513_dilated_dm05.tflite',
+    labelsFile: './model/labels.txt',
+    inputSize: [513, 513, 3],
+    outputSize: [513, 513, 21],
+  },
+]);
 
 function main(camera) {
 
