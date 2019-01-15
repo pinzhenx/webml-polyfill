@@ -29,7 +29,6 @@ const mobilenet_v1_tflite = {
   },
   intro: 'An efficient Convolutional Neural Networks for Mobile Vision Applications. Loading MobileNet model trained by ImageNet in TensorFlow Lite format, constructs and inferences it by WebML API.',
   introUrl: 'https://arxiv.org/pdf/1704.04861.pdf',
-  netronUrl: 'https://lutzroeder.github.io/netron/?url=https://yourhost/mobilenet_v1_1.0_224.tflite'
 };
 const mobilenet_v2_tflite = {
   modelName: 'mobilenet_v2_tflite',
@@ -43,7 +42,6 @@ const mobilenet_v2_tflite = {
   },
   intro: 'MobileNetV2 improves the state of the art performance of mobile models. Loading MobileNet model v2.0 trained by ImageNet in TensorFlow Lite format, constructs and inferences it by WebML API.',
   introUrl: 'https://arxiv.org/abs/1801.04381',
-  netronUrl: 'https://lutzroeder.github.io/netron/?url=https://yourhost/mobilenet_v2_1.0_224.tflite'
 };
 const inception_v3_tflite = {
   modelName: 'inception_v3_tflite',
@@ -57,7 +55,6 @@ const inception_v3_tflite = {
   },
   intro: 'Inception-v3 is trained for the ImageNet Large Visual Recognition Challenge. Loading Inception-v3 model trained by ImageNet in TensorFlow Lite format, constructs and inferences it by WebML API.',
   introUrl: 'http://arxiv.org/abs/1512.00567',
-  netronUrl: 'https://lutzroeder.github.io/netron/?url=https://yourhost/inception_v3.tflite'
 };
 const inception_v4_tflite = {
   modelName: 'inception_v4_tflite',
@@ -71,7 +68,6 @@ const inception_v4_tflite = {
   },
   intro: 'Inception architecture that has been shown to achieve very good performance at relatively low computational cost. Loading Inception-v4 model trained by ImageNet in TensorFlow Lite format, constructs and inferences it by WebML API.',
   introUrl: 'https://arxiv.org/abs/1602.07261',
-  netronUrl: 'https://lutzroeder.github.io/netron/?url=https://yourhost/inception_v4.tflite'
 };
 const squeezenet_tflite = {
   modelName: 'squeezenet_tflite',
@@ -85,7 +81,6 @@ const squeezenet_tflite = {
   },
   intro: 'A light-weight CNN providing Alexnet level accuracy with 50X fewer parameters. Loading SqueezeNet model trained by ImageNet in TensorFlow Lite format, constructs and inferences it by WebML API.',
   introUrl: 'https://arxiv.org/abs/1602.07360',
-  netronUrl: 'https://lutzroeder.github.io/netron/?url=https://yourhost/squeezenet.tflite'
 };
 const inception_resnet_v2_tflite = {
   modelName: 'inception_resnet_v2_tflite',
@@ -102,7 +97,6 @@ const inception_resnet_v2_tflite = {
   },
   intro: 'Inception architecture that has been shown to achieve very good performance at relatively low computational cost, and training with residual connections accelerates the training of Inception networks significantly. There is also some evidence of residual Inception networks outperforming similarly expensive Inception networks without residual connections.',
   introUrl: 'https://arxiv.org/abs/1602.07261',
-  netronUrl: 'https://lutzroeder.github.io/netron/?url=https://yourhost/inception_resnet_v2.tflite'
 };
 const squeezenet_onnx = {
   modelName: 'squeezenet_onnx',
@@ -121,7 +115,6 @@ const squeezenet_onnx = {
   },
   intro: 'A light-weight CNN providing Alexnet level accuracy with 50X fewer parameters. Loading SqueezeNet model trained by ImageNet in ONNX format, constructs and inferences it by WebML API.',
   introUrl: 'https://arxiv.org/abs/1602.07360',
-  netronUrl: 'https://lutzroeder.github.io/netron/?url=https://yourhost/squeezenet1.1.onnx'
 };
 const mobilenet_v2_onnx = {
   modelName: 'mobilenet_v2_onnx',
@@ -140,11 +133,10 @@ const mobilenet_v2_onnx = {
   },
   intro: 'MobileNetV2 improves the state of the art performance of mobile models. Loading MobileNet model v2.0 in ONNX format, constructs and inferences it by WebML API.',
   introUrl: 'https://arxiv.org/abs/1801.04381',
-  netronUrl: 'https://lutzroeder.github.io/netron/?url=https://yourhost/mobilenetv2-1.0.onnx'
 };
 const resnet_v1_onnx = {
   modelName: 'resnet_v1_onnx',
-  modelFile: '../image_classification/model/resnet50_v1.onnx',
+  modelFile: '../image_classification/model/resnet50v1.onnx',
   labelsFile: '../image_classification/model/labels1000.txt',
   inputSize: [224, 224, 3],
   outputSize: 1000,
@@ -159,11 +151,10 @@ const resnet_v1_onnx = {
   },
   intro: 'A residual learning framework to ease the training of networks that are substantially deeper than those used previously. This result won the 1st place on the ILSVRC 2015 classification task.',
   introUrl: 'https://arxiv.org/abs/1512.03385',
-  netronUrl: 'https://lutzroeder.github.io/netron/?url=https://yourhost/resnet50_v1.onnx'
 };
 const resnet_v2_onnx = {
   modelName: 'resnet_v2_onnx',
-  modelFile: '../image_classification/model/resnet50_v2.onnx',
+  modelFile: '../image_classification/model/resnet50v2.onnx',
   labelsFile: '../image_classification/model/labels1000.txt',
   inputSize: [224, 224, 3],
   outputSize: 1000,
@@ -178,17 +169,15 @@ const resnet_v2_onnx = {
   },
   intro: 'Deep residual networks have emerged as a family of extremely deep architectures showing compelling accuracy and nice convergence behaviors. It reports improved results using a 1001-layer ResNet on CIFAR-10 (4.62% error) and CIFAR-100, and a 200-layer ResNet on ImageNet.',
   introUrl: 'https://arxiv.org/abs/1603.05027',
-  netronUrl: 'https://lutzroeder.github.io/netron/?url=https://yourhost/resnet50_v2.onnx'
 };
 const inception_v2_onnx = {
   modelName: 'inception_v2_onnx',
-  modelFile: '../image_classification/model/inception_v2.onnx',
+  modelFile: '../image_classification/model/inceptionv2.onnx',
   labelsFile: '../image_classification/model/ilsvrc2012labels.txt',
   inputSize: [224, 224, 3],
   outputSize: 1000,
   intro: 'Inception-v2 is trained for the ImageNet Large Visual Recognition Challenge. Loading Inception-v2 model trained by ImageNet in ONNX format, constructs and inferences it by WebML API.',
   introUrl: 'https://arxiv.org/abs/1512.00567',
-  netronUrl: 'https://lutzroeder.github.io/netron/?url=https://yourhost/inception_v2.onnx'
 };
 const densenet_onnx = {
   modelName: 'densenet_onnx',
@@ -208,7 +197,6 @@ const densenet_onnx = {
   },
   intro: 'Dense Convolutional Network (DenseNet) connects each layer to every other layer in a feed-forward fashion.  DenseNets have several compelling advantages: they alleviate the vanishing-gradient problem, strengthen feature propagation, encourage feature reuse, and substantially reduce the number of parameters. ',
   introUrl: 'https://arxiv.org/abs/1608.06993',
-  netronUrl: 'https://lutzroeder.github.io/netron/?url=https://yourhost/densenet121.onnx'
 };
 
 const ssd_mobilenet_tflite = {

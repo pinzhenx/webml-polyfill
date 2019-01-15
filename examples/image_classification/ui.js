@@ -215,13 +215,11 @@ $(document).ready(function () {
                   $('#introurl').addClass('dnone');
                 }
 
-                if (model.netronUrl) {
-                  $('#netronurl').html(model.modelName + ' Model Viewer');
-                  $('#netronurl').attr('href', model.netronUrl);
-                  $('#netronurl').removeClass('dnone');
-                } else {
-                  $('#netronurl').addClass('dnone');
-                }
+                let modelUrl = new URL(model.modelFile, window.location.href).href;
+                let netronUrl = `https://lutzroeder.github.io/netron/?url=${modelUrl}`;
+                $('#netronurl').html(model.modelName + ' Model Viewer');
+                $('#netronurl').attr('href', netronUrl);
+                $('#netronurl').removeClass('dnone');
               }
             }
           }, 2000);

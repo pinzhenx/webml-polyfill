@@ -85,13 +85,6 @@ if (currentBackend === '') {
   }
 }
 
-// register models
-for (let model of imageClassificationModels) {
-  if (currentModel == model.modelName) {
-    utils.changeModelParam(model)
-  }
-}
-
 // register prefers
 if (getOS() === 'Mac OS' && currentBackend === 'WebML') {
   if (!currentPrefer) {
@@ -120,15 +113,18 @@ async function utilsPredict(imageElement, backend, prefer) {
   if(track) {
     track.stop();
   }
-  showProgress();
+
   try {
     utils.deleteAll();
   } catch (e) {
      console.log('utils.deleteAll(): ' + e);
   }
   try {
-    await utils.init(backend, prefer);
-    let ret = await utils.predict(imageElement);
+    let ret = await utils.init(backend, prefer);
+    if (ret == 'NOT_LOADED') {
+      return;
+    }
+    ret = await utils.predict(imageElement);
     showResults();
     updateResult(ret);
   }
@@ -140,9 +136,12 @@ async function utilsPredict(imageElement, backend, prefer) {
 
 async function utilsPredictCamera(backend, prefer) {
   streaming = true;
-  showProgress();
+
   try {
-    await utils.init(backend, prefer);
+    let ret = await utils.init(backend, prefer);
+    if (ret == 'NOT_LOADED') {
+      return;
+    }
     let stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: "environment" } });
     video.srcObject = stream;
     track = stream.getTracks()[0];
@@ -157,19 +156,35 @@ async function utilsPredictCamera(backend, prefer) {
 
 async function updateScenario(camera, backend, prefer) {
   streaming = false;
+  currentBackend = backend;
+  currentPrefer = prefer;
   try {
     utils.deleteAll();
   } catch (e) {
      console.log('utils.deleteAll(): ' + e);
   }
   if (!camera) {
-    utilsPredict(imageElement, backend, prefer);
+    utilsPredict(imageElement, currentBackend, currentPrefer);
   } else {
-    utilsPredictCamera(backend, prefer);
+    utilsPredictCamera(currentBackend, currentPrefer);
   }
 }
 
 async function main(camera) {
+
+  showProgress();
+  for (let model of imageClassificationModels) {
+    if (currentModel == model.modelName) {
+      try {
+        await utils.loadModel(model);
+      }
+      catch (e) {
+        showAlert(e);
+        showError();
+      }
+    }
+  }
+
   if (!camera) {
     inputElement.addEventListener('change', (e) => {
       let files = e.target.files;
