@@ -30,6 +30,9 @@
         font-size: 12px;
         tab-size: 2;
       }
+      input[type=checkbox] {
+        vertical-align: middle;
+      }
       .prefer-show {
         display: block;
       }
@@ -82,7 +85,32 @@
             1(warming up) + <input type="number" id="iteration" min="1" size="4" value="200"/>
           </div>
           <div class="row top-margin">
-            <div class="col">
+            <div class="col-4">
+              <label><input type="checkbox" name="supportedOp" value="0"> ADD</label>
+              <br />
+              <label><input type="checkbox" name="supportedOp" value="10003"> ATROUS_CONV_2D</label>
+              <br />
+              <label><input type="checkbox" name="supportedOp" value="10004"> ATROUS_DEPTHWISE_CONV_2D</label>
+              <br />
+              <label><input type="checkbox" name="supportedOp" value="1"> AVERAGE_POOL_2D</label>
+              <br />
+              <label><input type="checkbox" name="supportedOp" value="2"> CONCATENATION</label>
+              <br />
+              <label><input type="checkbox" name="supportedOp" value="3"> CONV_2D</label>
+              <br />
+              <label><input type="checkbox" name="supportedOp" value="4"> DEPTHWISE_CONV_2D</label>
+              <br />
+              <label><input type="checkbox" name="supportedOp" value="9"> FULLY_CONNECTED</label>
+              <br />
+              <label><input type="checkbox" name="supportedOp" value="17"> MAX_POOL_2D</label>
+              <br />
+              <label><input type="checkbox" name="supportedOp" value="18"> MUL</label>
+              <br />
+              <label><input type="checkbox" name="supportedOp" value="22"> RESHAPE</label>
+              <br />
+              <label><input type="checkbox" name="supportedOp" value="23"> RESIZE_BILINEAR</label>
+              <br />
+              <label><input type="checkbox" name="supportedOp" value="25"> SOFTMAX</label>
             </div>
             <div class="col-8" align="center">
               <canvas id="poseCanvas"></canvas>

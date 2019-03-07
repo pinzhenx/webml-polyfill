@@ -20,6 +20,7 @@ const onnxModelArray = [
   "inception_v2_onnx",
   "densenet_onnx"];
 
+let supportedOpsList = [];
 let supportedModels = [];
 supportedModels = supportedModels.concat(imageClassificationModels, objectDetectionModels, humanPoseEstimationModels);
 
@@ -472,6 +473,7 @@ class WebMLJSBenchmark extends Benchmark {
       this.model = new PoseNet(modelArch, this.modelVersion, useAtrousConv, this.outputStride,
                                this.scaleInputSize, smType, cacheMap, backend, getPreferString(backend));
     }
+    supportedOpsList = Array.from(document.querySelectorAll('input[name=supportedOp]:checked')).map(x => parseInt(x.value));
     await this.model.createCompiledModel();
   }
   printPredictResult() {
@@ -539,6 +541,7 @@ async function run() {
   inputElement.setAttribute('class', 'disabled');
   pickBtnEelement.setAttribute('class', 'btn btn-primary disabled');
   let logger = new Logger(document.querySelector('#log'));
+  window.console.debug = (msg) => logger.log(msg);
   logger.group('Benchmark');
   try {
     let configuration = JSON.parse(document.querySelector('#configurations').selectedOptions[0].value);
@@ -673,7 +676,7 @@ document.addEventListener('DOMContentLoaded', () => {
   for (let configuration of configurations) {
     let option = document.createElement('option');
     option.value = JSON.stringify(configuration);
-    option.textContent = configuration.framework + ' (' + configuration.backend + ' backend)';
+    option.textContent = configuration.framework + ' (' + (configuration.backend === 'WASM' ? 'Hybrid' : configuration.backend) + ' backend)';
     if (configuration.framework === 'WebML API') {
       if (navigator.ml.isPolyfill) {
         option.disabled = true;

@@ -5,19 +5,19 @@ import { product } from '../utils';
 import Graph from '../GraphUtils';
 
 var supportedOpCode = new Set([
-  OperationCode.ADD,
-  OperationCode.ATROUS_CONV_2D,
-  OperationCode.ATROUS_DEPTHWISE_CONV_2D,
+  // OperationCode.ADD,
+  // OperationCode.ATROUS_CONV_2D,
+  // OperationCode.ATROUS_DEPTHWISE_CONV_2D,
   // OperationCode.AVERAGE_POOL_2D,
   // OperationCode.CONCATENATION,
-  OperationCode.CONV_2D,
-  OperationCode.DEPTHWISE_CONV_2D,
-  OperationCode.FULLY_CONNECTED,
+  // OperationCode.CONV_2D,
+  // OperationCode.DEPTHWISE_CONV_2D,
+  // OperationCode.FULLY_CONNECTED,
   // OperationCode.MAX_POOL_2D,
-  OperationCode.MUL,
-  OperationCode.RESHAPE,
-  OperationCode.RESIZE_BILINEAR,
-  OperationCode.SOFTMAX,
+  // OperationCode.MUL,
+  // OperationCode.RESHAPE,
+  // OperationCode.RESIZE_BILINEAR,
+  // OperationCode.SOFTMAX,
 ]);
 
 
@@ -35,8 +35,6 @@ export default class PreparedModel {
       tensorValue: [],
       tensorShape: []
     };
-
-    console.debug(`Supported Ops: ${Array.from(supportedOpCode).map(op => Object.keys(OperationCode).find(k => OperationCode[k] === op)).join(', ')}`)
   }
 
   /**
@@ -47,6 +45,9 @@ export default class PreparedModel {
   async prepare(model) {
     this._model = model;
     this._nn_ops = await getNNOpsInstance();
+
+    supportedOpCode = new Set(model.supportedOpsList);
+    console.debug(`Supported Ops: ${Array.from(supportedOpCode).map(op => Object.keys(OperationCode).find(k => OperationCode[k] === op)).join(', ')}`)
 
     const graph = new Graph(model._operations.length);
     model._operations.forEach((op, i) => {
@@ -110,6 +111,7 @@ export default class PreparedModel {
         submodel.identifyInputsAndOutputs(submodelInputs, submodelOutputs);
         await submodel.finish();
         const compilation = await submodel.createCompilation();
+        // compilation.setPreference(this._nnNative.PREFER_SUSTAINED_SPEED);
         compilation.setPreference(this._nnNative.PREFER_FAST_SINGLE_ANSWER);
         await compilation.finish();
         const execution = await compilation.createExecution();
