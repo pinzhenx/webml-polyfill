@@ -4,21 +4,7 @@ import * as utils from '../utils'
 import { product } from '../utils';
 import Graph from '../GraphUtils';
 
-var supportedOpCode = new Set([
-  // OperationCode.ADD,
-  // OperationCode.ATROUS_CONV_2D,
-  // OperationCode.ATROUS_DEPTHWISE_CONV_2D,
-  // OperationCode.AVERAGE_POOL_2D,
-  // OperationCode.CONCATENATION,
-  // OperationCode.CONV_2D,
-  // OperationCode.DEPTHWISE_CONV_2D,
-  // OperationCode.FULLY_CONNECTED,
-  // OperationCode.MAX_POOL_2D,
-  // OperationCode.MUL,
-  // OperationCode.RESHAPE,
-  // OperationCode.RESIZE_BILINEAR,
-  // OperationCode.SOFTMAX,
-]);
+var supportedOpCode = new Set([]);
 
 
 export default class PreparedModel {
@@ -27,7 +13,7 @@ export default class PreparedModel {
     this._operations = [];
     this._operands = [];
     this._syncedOperands = [];
-    this._syncedFromWasm = [];
+    this._hasSynced = [];
     this._prepared = false;
     this._nn_ops = null;
     this._model;
@@ -55,13 +41,22 @@ export default class PreparedModel {
       if (!supportedOpCode.has(op.type)) {
         graph.setBlack(i);
       }
-    })
+    });
     graph.identifyInputOutputTensors(model._inputs, model._outputs);
 
     const partitions = graph.partition();
     for (const {nodes, inTensors, outTensors} of partitions) {
 
       console.debug(`Subgraph ${typeof this.subgraphcounter === 'undefined' ? this.subgraphcounter = 0 : ++this.subgraphcounter}\t (${supportedOpCode.has(model._operations[nodes[0]].type) ? 'WebNN' : 'WASM'}):\t[${Object.entries(nodes.map(opId => Object.keys(OperationCode).find(k => OperationCode[k] === model._operations[opId].type)).reduce((counts, v) => {counts[v]?counts[v]++:counts[v]=1; return counts}, {})).map(n => `${n[0]} x ${n[1]}`).join(', ')}]`);
+
+      // allocate arrays for tensors across two partitions
+      for (const tensorId of [...inTensors, ...outTensors]) {
+        if (typeof this._syncedOperands[tensorId] === 'undefined') {
+          const tensor = model._operands[tensorId];
+          const typedArray = utils.operandCodeToTypedArrayMap.get(tensor.type);
+          this._syncedOperands[tensorId] = new typedArray(product(tensor.dimensions));
+        }
+      }
 
       if (!supportedOpCode.has(model._operations[nodes[0]].type)) {
 
@@ -111,10 +106,12 @@ export default class PreparedModel {
         submodel.identifyInputsAndOutputs(submodelInputs, submodelOutputs);
         await submodel.finish();
         const compilation = await submodel.createCompilation();
-        // compilation.setPreference(this._nnNative.PREFER_SUSTAINED_SPEED);
         compilation.setPreference(this._nnNative.PREFER_FAST_SINGLE_ANSWER);
         await compilation.finish();
         const execution = await compilation.createExecution();
+        outTensors.forEach((tensorId, i) => {
+          execution.setOutput(i, this._syncedOperands[tensorId]);
+        });
 
         this._operations.push({
           type: OperationCode.NATIVE_OP,
@@ -122,15 +119,6 @@ export default class PreparedModel {
           outputs: outTensors,
           execution: execution,
         });
-      }
-
-      // allocate arrays for tensors across two partitions
-      for (const tensorId of [...inTensors, ...outTensors]) {
-        if (typeof this._syncedOperands[tensorId] === 'undefined') {
-          const tensor = model._operands[tensorId];
-          const typedArray = utils.operandCodeToTypedArrayMap.get(tensor.type);
-          this._syncedOperands[tensorId] = new typedArray(product(tensor.dimensions));
-        }
       }
     }
 
@@ -162,13 +150,22 @@ export default class PreparedModel {
       throw new Error('Model is not prepared');
     }
 
-    inputs.forEach(input => {
-      let operand = this._operands[input.index];
-      let buffer = input.buffer;
-      this._setTensorData(operand.type, operand.value, buffer);
-    });
+    this._hasSynced = new Array(this._operands.length).fill(false);
+    const firstOp = this._operations[0];
+    if (firstOp.type === OperationCode.NATIVE_OP) {
+      // copy input tensors to WebNN memory
+      inputs.forEach((input, i) => {
+        firstOp.execution.setInput(i, input.buffer);
+        this._hasSynced[input.index] = true;
+      });
+    } else {
+      // copy input tensors to WASM memory
+      inputs.forEach(input => {
+        const operand = this._operands[input.index];
+        this._setTensorData(operand.type, operand.value, input.buffer);
+      });
+    }
 
-    this._syncedFromWasm = new Array(this._operands.length).fill(false);
     for (const operation of this._operations) {
       await this._executeOperation(operation);
     }
@@ -264,35 +261,29 @@ export default class PreparedModel {
     switch(op) {
       case OperationCode.NATIVE_OP: {
 
+        const execution = operation.execution;
+
         // sync tensor data from wasm memory
-        [...inputs, ...outputs].forEach(tensorId => {
+        inputs.forEach((tensorId, i) => {
           // multiple NATIVE_OPs may share a same input. avoid repetitive sync
-          if (!this._syncedFromWasm[tensorId]) {
+          if (!this._hasSynced[tensorId]) {
             const operand = this._operands[tensorId];
             const buffer = this._syncedOperands[tensorId];
             this._getTensorData(operand.type, operand.value, buffer);
-            this._syncedFromWasm[tensorId] = true;
+            execution.setInput(i, buffer);
+            this._hasSynced[tensorId] = true;
           }
         });
 
         // execute subgraph
-        const execution = operation.execution;
-        for (let i = 0; i < inputs.length; i++)
-        inputs.forEach((inputId, i) => {
-          execution.setInput(i, this._syncedOperands[inputId]);
-        })
-        outputs.forEach((outputId, i) => {
-          execution.setOutput(i, this._syncedOperands[outputId]);
-        })
         await execution.startCompute();
 
         // sync tensor data to wasm memory
-        [...inputs, ...outputs].forEach(tensorId => {
+        outputs.forEach(tensorId => {
           const operand = this._operands[tensorId];
           const buffer = this._syncedOperands[tensorId];
           this._setTensorData(operand.type, operand.value, buffer);
         });
-
 
       } break;
       case OperationCode.ADD: {
