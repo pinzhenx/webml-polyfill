@@ -228,6 +228,7 @@ class Utils {
     if (!this.initialized) return;
 
     let iterators = [];
+    let models = [];
     for (let config of configs) {
       let importer = this.modelFile.split('.').pop() === 'tflite' ? TFliteModelImporter : OnnxModelImporter;
       let model = await new importer({
@@ -236,6 +237,7 @@ class Utils {
         prefer: config.prefer || null,
       });
       iterators.push(model.layerIterator([this.inputTensor], layerList));
+      models.push(model);
     }
 
     while (true) {
@@ -264,6 +266,12 @@ class Utils {
           let variance = sum / refOutput.value.tensor.length;
           console.debug(`var with ${configs[0].backend}: ${variance}`);
         }
+      }
+    }
+
+    for (let model of models) {
+      if (model._backend !== 'WebML') {
+        model._compilation._preparedModel._deleteAll();
       }
     }
   }
