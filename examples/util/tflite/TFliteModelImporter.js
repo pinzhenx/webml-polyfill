@@ -155,7 +155,7 @@ class TFliteModelImporter {
 
       await this._model.finish();
       this._compilation = await this._model.createCompilation();
-      this._compilation.setPreference(getPreferCode(this._backend, this._prefer));
+      this._compilation.setPreference(getPreferCode(this._backend, this._prefer), supportedOpsList);
       await this._compilation.finish();
       this._execution = await this._compilation.createExecution();
 
