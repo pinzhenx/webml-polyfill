@@ -5,7 +5,9 @@ import { product } from '../utils';
 import Graph from '../GraphUtils';
 
 var supportedOpCode = new Set([]);
-
+var eagerMode = false;
+var executeTimes = 0;
+var skipWarmUpRuns = 1;
 
 export default class PreparedModel {
   constructor() {
@@ -16,6 +18,7 @@ export default class PreparedModel {
     this._hasSynced = [];
     this._prepared = false;
     this._nn_ops = null;
+    this._profileOps = [];
     this._model;
     this._toDelete = {
       tensorValue: [],
@@ -32,6 +35,12 @@ export default class PreparedModel {
     this._model = model;
     this._nn_ops = await getNNOpsInstance();
 
+    this._hybridPreferCode = {
+      low: this._nnNative.PREFER_LOW_POWER,
+      fast: this._nnNative.PREFER_FAST_SINGLE_ANSWER,
+      sustained: this._nnNative.PREFER_SUSTAINED_SPEED,
+
+    }[model.hybridPrefer];
     supportedOpCode = new Set(model.supportedOpsList);
     console.debug(`Supported Ops: ${Array.from(supportedOpCode).map(op => Object.keys(OperationCode).find(k => OperationCode[k] === op)).join(', ')}`)
 
@@ -44,7 +53,15 @@ export default class PreparedModel {
     })
     graph.identifyInputOutputTensors(model._inputs, model._outputs);
 
-    const partitions = graph.partition();
+    eagerMode = model.eagerMode;
+    console.debug(`Mode: ${eagerMode ? 'Eager' : 'Graph'}`);
+
+    const partitions = graph.partition(eagerMode);
+
+    if (eagerMode) {
+      this._profileOps = new Array(partitions.length).fill(0);
+    }
+
     for (const {nodes, inTensors, outTensors} of partitions) {
 
       console.debug(`Subgraph ${typeof this.subgraphcounter === 'undefined' ? this.subgraphcounter = 0 : ++this.subgraphcounter}\t (${supportedOpCode.has(model._operations[nodes[0]].type) ? 'WebNN' : 'WASM'}):\t[${Object.entries(nodes.map(opId => Object.keys(OperationCode).find(k => OperationCode[k] === model._operations[opId].type)).reduce((counts, v) => {counts[v]?counts[v]++:counts[v]=1; return counts}, {})).map(n => `${n[0]} x ${n[1]}`).join(', ')}]`);
@@ -53,7 +70,7 @@ export default class PreparedModel {
 
         // run in polyfill with eager mode
 
-        // break group of WASM operaions to singletons in eager mode
+        // break group of WASM operations to singletons in eager mode
         for (const operationId of nodes) {
           const operation = model._operations[operationId];
           this._operations.push(operation);
@@ -92,6 +109,7 @@ export default class PreparedModel {
         const submodel = await this._nnNative.createModel();
         const globalIdToLocalId = {};
         let operandIndex = 0;
+        let eagerOpType = null;
 
         for (const operationId of nodes) {
           const operation = model._operations[operationId];
@@ -111,6 +129,9 @@ export default class PreparedModel {
               if (operand.value) {
                 submodel.setOperandValue(localTensorId, operand.value);
               }
+              if (eagerMode) {
+                eagerOpType = model._operations[nodes[0]].type;
+              }
             }
           }
 
@@ -125,7 +146,7 @@ export default class PreparedModel {
         await submodel.finish();
 
         const compilation = await submodel.createCompilation();
-        compilation.setPreference(this._nnNative.PREFER_FAST_SINGLE_ANSWER);
+        compilation.setPreference(this._hybridPreferCode);
         await compilation.finish();
 
         const execution = await compilation.createExecution();
@@ -138,6 +159,7 @@ export default class PreparedModel {
           inputs: inTensors,
           outputs: outTensors,
           execution: execution,
+          eagerOpType: eagerOpType
         });
       }
 
@@ -159,6 +181,11 @@ export default class PreparedModel {
 
     this._hasSynced = new Array(this._operands.length).fill(false);
 
+    executeTimes++;
+    if (executeTimes === skipWarmUpRuns) {
+      this._profileOps.fill(0);
+    }
+
     const firstOp = this._operations[0];
     if (firstOp.type === OperationCode.NATIVE_OP) {
       // copy to WebNN memory
@@ -174,8 +201,15 @@ export default class PreparedModel {
       });
     }
 
-    for (const operation of this._operations) {
-      await this._executeOperation(operation);
+    for (const [i, operation] of this._operations.entries()) {
+      if (eagerMode) {
+        const start = performance.now();
+        await this._executeOperation(operation);
+        const end = performance.now();
+        this._profileOps[i] += end - start;
+      } else {
+        await this._executeOperation(operation);
+      }
     }
 
     const lastOp = this._operations[this._operations.length - 1];
@@ -278,7 +312,7 @@ export default class PreparedModel {
 
     switch(op) {
       case OperationCode.NATIVE_OP: {
-
+        
         const execution = operation.execution;
         const nnOperands = this._nnOperands;
         const wasmOperands = this._operands;
@@ -906,5 +940,22 @@ export default class PreparedModel {
       tensorShape.delete();
     });
     this._model._operands = [];
+  }
+
+  getReport() {
+    if (eagerMode) {
+      executeTimes -= skipWarmUpRuns;
+      console.debug(`\n\nExecution calls: ${executeTimes} (omitted ${skipWarmUpRuns} warm-up runs)`);
+      for (const [i, op] of this._operations.entries()) {
+        const eagerOpType = op.eagerOpType;
+        const opTypeName = Object.keys(OperationCode).find(k => OperationCode[k] === eagerOpType);
+        const avgTime = this._profileOps[i] / executeTimes;
+        console.debug(`${opTypeName}:${new Array(26 - opTypeName.length).join(' ')}${avgTime.toFixed(5)} ms`);
+      }
+      console.debug(`Sum: ${(this._profileOps.reduce((a,b)=>a+b) / executeTimes).toFixed(5)} ms`);
+    } else {
+      console.debug('Op-level report is only available in eager mode');
+    }
+    executeTimes = 0;
   }
 }

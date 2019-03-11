@@ -180,7 +180,7 @@ export default class Graph {
     }
     return merged;
   }
-  partition() {
+  partition(eager = false) {
     const _this = this;
 
     function union(a, b) {
@@ -196,7 +196,16 @@ export default class Graph {
     for (let i = 0; i < _this.vertices; i++) {
       crossTensorsTo.set(i, new Set());
     }
-    for (const partition of this.biTopologicalSort()) {
+
+    let partitions = [];
+    if (eager) {
+      for (const i of this.topologicalSort())
+        partitions.push(new Set([i]));
+    } else {
+      partitions = this.biTopologicalSort();
+    }
+
+    for (const partition of partitions) {
       let inTensors = new Set();
       let outTensors = new Set();
       for (const u of partition) {

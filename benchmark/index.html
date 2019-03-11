@@ -82,7 +82,7 @@
             <select id="configurations">
             </select>
           </div>
-          <div id="preferDiv" class="prefer-hidden">
+          <div id="preferDiv" class="prefer-show">
             <h4>Preference</h4>
             <select id="preferSelect">
               <option value="sustained" selected>SUSTAINED_SPEED</option>
@@ -96,6 +96,8 @@
           </div>
           <div class="row top-margin">
             <div class="col-4">
+              <label><input type="checkbox" onchange="eagerMode=this.checked;document.querySelectorAll('input[name=supportedOp]').forEach(x=>{x.checked=true;x.disabled=this.checked})"> Eager Mode</label>
+              <br><br>
               <button onclick="document.querySelectorAll('input[name=supportedOp]').forEach(x => x.checked = true)">Select All</button>
               <button onclick="document.querySelectorAll('input[name=supportedOp]').forEach(x => x.checked = false)">Uncheck All</button>
               <br><br>
