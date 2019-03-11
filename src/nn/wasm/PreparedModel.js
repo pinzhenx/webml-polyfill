@@ -5,7 +5,7 @@ import { product } from '../utils';
 import Graph from '../GraphUtils';
 
 var supportedOpCode = new Set([]);
-
+var now;
 
 export default class PreparedModel {
   constructor() {
@@ -21,6 +21,10 @@ export default class PreparedModel {
       tensorValue: [],
       tensorShape: []
     };
+    this._synctime = 0;
+    this._wasmtime = 0;
+    this._webnntime = 0;
+    this._executetime = 0;
   }
 
   /**
@@ -156,9 +160,10 @@ export default class PreparedModel {
     if (!this._prepared) {
       throw new Error('Model is not prepared');
     }
-
+    now = performance.now()
+    this._executetime -= now;
+    this._synctime -= now;
     this._hasSynced = new Array(this._operands.length).fill(false);
-
     const firstOp = this._operations[0];
     if (firstOp.type === OperationCode.NATIVE_OP) {
       // copy to WebNN memory
@@ -173,11 +178,13 @@ export default class PreparedModel {
         this._setTensorData(operand.type, operand.value, input.buffer);
       });
     }
+    this._synctime += performance.now();
 
     for (const operation of this._operations) {
       await this._executeOperation(operation);
     }
 
+    this._synctime -= performance.now();
     const lastOp = this._operations[this._operations.length - 1];
     if (lastOp.type === OperationCode.NATIVE_OP) {
       // copy from WebNN memory
@@ -193,6 +200,13 @@ export default class PreparedModel {
         this._getTensorData(operand.type, operand.value, buffer);
       });
     }
+    now = performance.now();
+    this._synctime += now;
+    this._executetime += now;
+
+    console.warn(`sync: ${(this._synctime / this._executetime * 100).toFixed(3)}%\t\t\
+wasm: ${(this._wasmtime / this._executetime * 100).toFixed(3)}%\t\t\
+webnn: ${(this._webnntime / this._executetime * 100).toFixed(3)}%`);
   }
 
   async _executeOperation(operation) {
@@ -201,6 +215,9 @@ export default class PreparedModel {
     let inputs = operation.inputs;
     let outputs = operation.outputs;
     let operands = this._operands;
+
+    if (op !== OperationCode.NATIVE_OP)
+      this._wasmtime -= performance.now();
 
     function allParametersPresent(requiredIns, requiredOuts) {
       function verify(requiredCount, indexes, type) {
@@ -283,6 +300,7 @@ export default class PreparedModel {
         const nnOperands = this._nnOperands;
         const wasmOperands = this._operands;
 
+        this._synctime -= performance.now();
         inputs.forEach((tensorId, i) => {
           const buffer = nnOperands[tensorId];
 
@@ -294,10 +312,16 @@ export default class PreparedModel {
           }
           execution.setInput(i, buffer);
         });
+        now = performance.now();
+        this._synctime += now;
 
+        this._webnntime -= now;
         // execute subgraph
         await execution.startCompute();
+        now = performance.now();
+        this._webnntime += now;
 
+        this._synctime -= now;
         outputs.forEach(tensorId => {
 
           // sync data to wasm memory if needed
@@ -307,6 +331,7 @@ export default class PreparedModel {
             this._setTensorData(operand.type, operand.value, buffer);
           }
         });
+        this._synctime += performance.now();
 
       } break;
       case OperationCode.ADD: {
@@ -849,6 +874,9 @@ export default class PreparedModel {
         throw new Error(`Operation ${op} is not supported`);
       }
     }
+
+    if (op !== OperationCode.NATIVE_OP)
+      this._wasmtime += performance.now();
   }
 
   _setTensorData(type, ptr, data) {
@@ -906,5 +934,7 @@ export default class PreparedModel {
       tensorShape.delete();
     });
     this._model._operands = [];
+    console.warn('clear');
+    this._synctime = this._executetime = this._wasmtime = this._webnntime = 0;
   }
 }
