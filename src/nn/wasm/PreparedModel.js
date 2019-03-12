@@ -13,9 +13,7 @@ export default class PreparedModel {
   constructor() {
     this._nnNative = navigator.ml.getNeuralNetworkContext();
     this._operations = [];
-    this._operands = [];    // operands in WASM
-    this._nnOperands = [];  // operands in WebNN
-    this._hasSynced = [];
+    this._operands = [];
     this._prepared = false;
     this._nn_ops = null;
     this._profileOps = [];
@@ -39,7 +37,6 @@ export default class PreparedModel {
       low: this._nnNative.PREFER_LOW_POWER,
       fast: this._nnNative.PREFER_FAST_SINGLE_ANSWER,
       sustained: this._nnNative.PREFER_SUSTAINED_SPEED,
-
     }[model.hybridPrefer];
     supportedOpCode = new Set(model.supportedOpsList);
     console.debug(`Supported Ops: ${Array.from(supportedOpCode).map(op => Object.keys(OperationCode).find(k => OperationCode[k] === op)).join(', ')}`)
@@ -62,48 +59,40 @@ export default class PreparedModel {
       this._profileOps = new Array(partitions.length).fill(0);
     }
 
+    // allocate runtime operands
+    for (let i = 0; i < model._operands.length; ++i) {
+      const operand = model._operands[i];
+      const runtimeOperand = {};
+      runtimeOperand.type = operand.type;
+      runtimeOperand.dimensions = operand.dimensions;
+      if (utils.isTensor(operand.type)) {
+        runtimeOperand.value = this._allocateTensor(operand);
+        runtimeOperand.runtimeshape = this._allocateRuntimeShape(operand);
+        this._toDelete.tensorValue.push(runtimeOperand.value);
+        this._toDelete.tensorShape.push(runtimeOperand.runtimeshape);
+      } else {
+        runtimeOperand.value = operand.value;
+      }
+      this._operands.push(runtimeOperand);
+    }
+
     for (const {nodes, inTensors, outTensors} of partitions) {
 
       console.debug(`Subgraph ${typeof this.subgraphcounter === 'undefined' ? this.subgraphcounter = 0 : ++this.subgraphcounter}\t (${supportedOpCode.has(model._operations[nodes[0]].type) ? 'WebNN' : 'WASM'}):\t[${Object.entries(nodes.map(opId => Object.keys(OperationCode).find(k => OperationCode[k] === model._operations[opId].type)).reduce((counts, v) => {counts[v]?counts[v]++:counts[v]=1; return counts}, {})).map(n => `${n[0]} x ${n[1]}`).join(', ')}]`);
 
       if (!supportedOpCode.has(model._operations[nodes[0]].type)) {
 
-        // run in polyfill with eager mode
+        // run in polyfil
 
-        // break group of WASM operations to singletons in eager mode
+        // break a group of WASM operations to singletons
         for (const operationId of nodes) {
           const operation = model._operations[operationId];
           this._operations.push(operation);
-
-          // allocate WASM runtime operands
-          for (let tensorId of [...operation.inputs, ...operation.outputs]) {
-            const operand = model._operands[tensorId];
-            const runtimeOperand = {};
-            runtimeOperand.type = operand.type;
-            if (utils.isTensor(operand.type)) {
-              runtimeOperand.value = this._allocateTensor(operand);
-              runtimeOperand.runtimeshape = this._allocateRuntimeShape(operand);
-              this._toDelete.tensorValue.push(runtimeOperand.value);
-              this._toDelete.tensorShape.push(runtimeOperand.runtimeshape);
-            } else {
-              runtimeOperand.value = operand.value;
-            }
-            this._operands[tensorId] = runtimeOperand;
-          }
         }
 
       } else {
 
-        // run in WebNN with graph mode
-
-        // allocate placeholders for WebNN operands copies
-        for (const tensorId of [...inTensors, ...outTensors]) {
-          if (!this._nnOperands.hasOwnProperty(tensorId)) {
-            const tensor = model._operands[tensorId];
-            const typedArray = utils.operandCodeToTypedArrayMap.get(tensor.type);
-            this._nnOperands[tensorId] = new typedArray(product(tensor.dimensions));
-          }
-        }
+        // run in WebNN
 
         // build subgraph
         const submodel = await this._nnNative.createModel();
@@ -150,8 +139,17 @@ export default class PreparedModel {
         await compilation.finish();
 
         const execution = await compilation.createExecution();
+        inTensors.forEach((tensorId, i) => {
+          const operand = this._operands[tensorId];
+          const length = product(operand.dimensions);
+          const view = this._getTensorDataView(operand.type, operand.value, length);
+          execution.setInput(i, view);
+        });
         outTensors.forEach((tensorId, i) => {
-          execution.setOutput(i, this._nnOperands[tensorId]);
+          const operand = this._operands[tensorId];
+          const length = product(operand.dimensions);
+          const view = this._getTensorDataView(operand.type, operand.value, length);
+          execution.setOutput(i, view);
         });
 
         this._operations.push({
@@ -179,27 +177,15 @@ export default class PreparedModel {
       throw new Error('Model is not prepared');
     }
 
-    this._hasSynced = new Array(this._operands.length).fill(false);
-
     executeTimes++;
     if (executeTimes === skipWarmUpRuns) {
       this._profileOps.fill(0);
     }
 
-    const firstOp = this._operations[0];
-    if (firstOp.type === OperationCode.NATIVE_OP) {
-      // copy to WebNN memory
-      inputs.forEach((input, i) => {
-        this._nnOperands[input.index].set(input.buffer);
-        this._hasSynced[input.index] = true;
-      });
-    } else {
-      // copy to WASM memory
-      inputs.forEach(input => {
-        const operand = this._operands[input.index];
-        this._setTensorData(operand.type, operand.value, input.buffer);
-      });
-    }
+    inputs.forEach(input => {
+      const operand = this._operands[input.index];
+      this._setTensorData(operand.type, operand.value, input.buffer);
+    });
 
     for (const [i, operation] of this._operations.entries()) {
       if (eagerMode) {
@@ -212,21 +198,11 @@ export default class PreparedModel {
       }
     }
 
-    const lastOp = this._operations[this._operations.length - 1];
-    if (lastOp.type === OperationCode.NATIVE_OP) {
-      // copy from WebNN memory
-      outputs.forEach((output) => {
-        const operand = this._nnOperands[output.index];
-        output.buffer.set(operand);
-      });
-    } else {
-      // copy from WASM memory
-      outputs.forEach((output) => {
-        const operand = this._operands[output.index];
-        const buffer = output.buffer;
-        this._getTensorData(operand.type, operand.value, buffer);
-      });
-    }
+    outputs.forEach((output) => {
+      const operand = this._operands[output.index];
+      const buffer = output.buffer;
+      this._getTensorData(operand.type, operand.value, buffer);
+    });
   }
 
   async _executeOperation(operation) {
@@ -312,36 +288,17 @@ export default class PreparedModel {
 
     switch(op) {
       case OperationCode.NATIVE_OP: {
-        
         const execution = operation.execution;
-        const nnOperands = this._nnOperands;
-        const wasmOperands = this._operands;
 
         inputs.forEach((tensorId, i) => {
-          const buffer = nnOperands[tensorId];
-
-          if (!this._hasSynced[tensorId] && wasmOperands.hasOwnProperty(tensorId)) {
-            // sync data from wasm memory if needed
-            const operand = wasmOperands[tensorId];
-            this._getTensorData(operand.type, operand.value, buffer);
-            this._hasSynced[tensorId] = true;
-          }
-          execution.setInput(i, buffer);
+          const operand = this._operands[tensorId];
+          const length = product(operand.dimensions);
+          const view = this._getTensorDataView(operand.type, operand.value, length);
+          execution.setInput(i, view);
         });
 
         // execute subgraph
-        await execution.startCompute();
-
-        outputs.forEach(tensorId => {
-
-          // sync data to wasm memory if needed
-          if (wasmOperands.hasOwnProperty(tensorId)) {
-            const buffer = nnOperands[tensorId];
-            const operand = wasmOperands[tensorId];
-            this._setTensorData(operand.type, operand.value, buffer);
-          }
-        });
-
+        await operation.execution.startCompute();
       } break;
       case OperationCode.ADD: {
         allParametersPresent(3, 1);
@@ -912,6 +869,22 @@ export default class PreparedModel {
     }
     buffer.set(view);
   }
+
+  _getTensorDataView(type, ptr, length) {
+    const nn_ops = this._nn_ops;
+    let view;
+    if (type === OperandCode.TENSOR_FLOAT32) {
+      view = new Float32Array(nn_ops.HEAPF32.buffer, ptr, length);
+    } else if (type === OperandCode.TENSOR_INT32) {
+      view = new Int32Array(nn_ops.HEAP32.buffer, ptr, length);
+    } else if (type === OperandCode.TENSOR_QUANT8_ASYMM) {
+      view = new Uint8Array(nn_ops.HEAPU8.buffer, ptr, length);
+    } else {
+      throw new Error(`Operand type ${type} is not supproted`);
+    }
+    return view;
+  }
+
 
   _allocateTensor(operand) {
     const nn_ops = this._nn_ops;
