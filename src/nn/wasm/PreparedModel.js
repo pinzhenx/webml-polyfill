@@ -5,9 +5,9 @@ import { product } from '../utils';
 import Graph from '../GraphUtils';
 
 var supportedOpCode = new Set([]);
-var eagerMode = false;
 var executeTimes = 0;
 var skipWarmUpRuns = 1;
+var profiling = [];
 
 export default class PreparedModel {
   constructor() {
@@ -16,7 +16,6 @@ export default class PreparedModel {
     this._operands = [];
     this._prepared = false;
     this._nn_ops = null;
-    this._profileOps = [];
     this._model;
     this._toDelete = {
       tensorValue: [],
@@ -50,14 +49,10 @@ export default class PreparedModel {
     })
     graph.identifyInputOutputTensors(model._inputs, model._outputs);
 
-    eagerMode = model.eagerMode;
-    console.debug(`Mode: ${eagerMode ? 'Eager' : 'Graph'}`);
+    let isEagerMode = model.eagerMode;
+    console.debug(`Mode: ${isEagerMode ? 'Eager' : 'Graph'}`);
 
-    const partitions = graph.partition(eagerMode);
-
-    if (eagerMode) {
-      this._profileOps = new Array(partitions.length).fill(0);
-    }
+    const partitions = graph.partition(isEagerMode);
 
     // allocate runtime operands
     for (let i = 0; i < model._operands.length; ++i) {
@@ -77,8 +72,8 @@ export default class PreparedModel {
     }
 
     for (const {nodes, inTensors, outTensors} of partitions) {
-
-      console.debug(`Subgraph ${typeof this.subgraphcounter === 'undefined' ? this.subgraphcounter = 0 : ++this.subgraphcounter}\t (${supportedOpCode.has(model._operations[nodes[0]].type) ? 'WebNN' : 'WASM'}):\t[${Object.entries(nodes.map(opId => Object.keys(OperationCode).find(k => OperationCode[k] === model._operations[opId].type)).reduce((counts, v) => {counts[v]?counts[v]++:counts[v]=1; return counts}, {})).map(n => `${n[0]} x ${n[1]}`).join(', ')}]`);
+      const subgraphName = `Subgraph ${typeof this.subgraphcounter === 'undefined' ? this.subgraphcounter = 0 : ++this.subgraphcounter}\t (${supportedOpCode.has(model._operations[nodes[0]].type) ? 'WebNN' : 'WASM'}):\t{${Object.entries(nodes.map(opId => Object.keys(OperationCode).find(k => OperationCode[k] === model._operations[opId].type)).reduce((counts, v) => {counts[v]?counts[v]++:counts[v]=1; return counts}, {})).map(n => `${n[0]} x ${n[1]}`).join(', ')}}`;
+      console.debug(subgraphName);
 
       if (!supportedOpCode.has(model._operations[nodes[0]].type)) {
 
@@ -87,6 +82,7 @@ export default class PreparedModel {
         // break a group of WASM operations to singletons
         for (const operationId of nodes) {
           const operation = model._operations[operationId];
+          operation.subgraphName = `Subgraph ${this.subgraphcounter}\t (WASM):\t{${Object.keys(OperationCode).find(k => OperationCode[k] === operation.type)}}`;
           this._operations.push(operation);
         }
 
@@ -98,7 +94,6 @@ export default class PreparedModel {
         const submodel = await this._nnNative.createModel();
         const globalIdToLocalId = {};
         let operandIndex = 0;
-        let eagerOpType = null;
 
         for (const operationId of nodes) {
           const operation = model._operations[operationId];
@@ -112,14 +107,11 @@ export default class PreparedModel {
                 type: operand.type,
                 dimensions: operand.dimensions,
                 scale: operand.scale,
-                zeroPoint: operand.operand,
+                zeroPoint: operand.zeroPoint,
               };
               submodel.addOperand(operandType);
               if (operand.value) {
                 submodel.setOperandValue(localTensorId, operand.value);
-              }
-              if (eagerMode) {
-                eagerOpType = model._operations[nodes[0]].type;
               }
             }
           }
@@ -157,11 +149,13 @@ export default class PreparedModel {
           inputs: inTensors,
           outputs: outTensors,
           execution: execution,
-          eagerOpType: eagerOpType
+          subgraphName: subgraphName,
         });
       }
 
     }
+
+    profiling = new Array(this._operations.length).fill(0);
 
     this._prepared = true;
   }
@@ -179,7 +173,7 @@ export default class PreparedModel {
 
     executeTimes++;
     if (executeTimes === skipWarmUpRuns) {
-      this._profileOps.fill(0);
+      profiling.fill(0);
     }
 
     inputs.forEach(input => {
@@ -188,14 +182,10 @@ export default class PreparedModel {
     });
 
     for (const [i, operation] of this._operations.entries()) {
-      if (eagerMode) {
-        const start = performance.now();
-        await this._executeOperation(operation);
-        const end = performance.now();
-        this._profileOps[i] += end - start;
-      } else {
-        await this._executeOperation(operation);
-      }
+      const start = performance.now();
+      await this._executeOperation(operation);
+      const end = performance.now();
+      profiling[i] += end - start;
     }
 
     outputs.forEach((output) => {
@@ -916,19 +906,22 @@ export default class PreparedModel {
   }
 
   getReport() {
-    if (eagerMode) {
-      executeTimes -= skipWarmUpRuns;
-      console.debug(`\n\nExecution calls: ${executeTimes} (omitted ${skipWarmUpRuns} warm-up runs)`);
-      for (const [i, op] of this._operations.entries()) {
-        const eagerOpType = op.eagerOpType;
-        const opTypeName = Object.keys(OperationCode).find(k => OperationCode[k] === eagerOpType);
-        const avgTime = this._profileOps[i] / executeTimes;
-        console.debug(`${opTypeName}:${new Array(26 - opTypeName.length).join(' ')}${avgTime.toFixed(5)} ms`);
+    executeTimes -= skipWarmUpRuns;
+    let wasmTime = 0;
+    let webnnTime = 0;
+    console.debug(`\n\nExecution calls: ${executeTimes} (omitted ${skipWarmUpRuns} warm-up runs)`);
+    for (const [i, op] of this._operations.entries()) {
+      const avgTime = profiling[i] / executeTimes;
+      console.debug(`${avgTime.toFixed(5)} ms\t- ${op.subgraphName}`);
+      if (op.subgraphName.indexOf('WASM') > 0) {
+        wasmTime += avgTime;
+      } else {
+        webnnTime += avgTime;
       }
-      console.debug(`Sum: ${(this._profileOps.reduce((a,b)=>a+b) / executeTimes).toFixed(5)} ms`);
-    } else {
-      console.debug('Op-level report is only available in eager mode');
     }
+    console.debug(`WASM time: ${wasmTime.toFixed(5)} ms`);
+    console.debug(`WebNN time: ${webnnTime.toFixed(5)} ms`);
+    console.debug(`Sum: ${(profiling.reduce((a,b)=>a+b) / executeTimes).toFixed(5)} ms`);
     executeTimes = 0;
   }
 }
