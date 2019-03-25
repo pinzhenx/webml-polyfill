@@ -813,6 +813,29 @@ class OnnxModelImporter {
           this._tensorIds[output] = this._tensorIds[input];
           console.log(`Skip Unsqueeze: ${input} -> ${output}`);
         } break;
+        case 'LRN': {
+          // Add inputs
+          const input = node.input[0];
+          const alpha = getAttributeValue(node, 'alpha', 0.0001);
+          const beta = getAttributeValue(node, 'beta', 0.75);
+          const bias = getAttributeValue(node, 'bias', 1.0);
+          const radius = getAttributeValue(node, 'size');
+          const inputDims = this._getTensorTypeByName(input).dimensions;
+
+          inputs.push(this._getTensorIdByName(input));
+          inputs.push(this._addScalarInt32(radius));
+          inputs.push(this._addScalarFloat32(bias));
+          inputs.push(this._addScalarFloat32(alpha));
+          inputs.push(this._addScalarFloat32(beta));
+
+          // Add outputs
+          const output = node.output[0];
+          const outputType = {type: this._nn.TENSOR_FLOAT32, dimensions: Array.from(inputDims)};
+          const outputId = this._addNewTensorOperand(output, outputType);
+          outputs.push(outputId);
+          console.log(`  output ${output}: [${inputDims}]`);
+          opCode = this._nn.LOCAL_RESPONSE_NORMALIZATION;
+        } break;
         case 'Softmax': {
           console.log(`  inputs: [${node.input}]`);
           const input = node.input[0];

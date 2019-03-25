@@ -636,6 +636,15 @@ export default class WebGLModel {
         const output = operands[outputs[0]];
         output.assign(tf.maximum(input1, input2));
       } break;
+      case OperationCode.LOCAL_RESPONSE_NORMALIZATION: {
+        const input = operands[inputs[0]];
+        const radius = operands[inputs[1]].value;
+        const bias = operands[inputs[2]].value;
+        const alpha = operands[inputs[3]].value;
+        const beta = operands[inputs[4]].value;
+        const output = operands[outputs[0]];
+        output.assign(input.localResponseNormalization(radius, bias, alpha, beta));
+      }
     }
 
     outputs.forEach(tensorId => {

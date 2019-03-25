@@ -180,6 +180,16 @@ const imageClassificationModels = [{
   intro: 'Deep residual networks have emerged as a family of extremely deep architectures showing compelling accuracy and nice convergence behaviors. It reports improved results using a 1001-layer ResNet on CIFAR-10 (4.62% error) and CIFAR-100, and a 200-layer ResNet on ImageNet.',
   paperUrl: 'https://arxiv.org/abs/1603.05027'
 }, {
+  modelName: 'Inception v1 (ONNX)',
+  modelFormatName: 'inception_v1_onnx',
+  modelSize: '28.0MB',
+  modelFile: '../image_classification/model/inception_v1.onnx',
+  labelsFile: '../image_classification/model/ilsvrc2012labels.txt',
+  inputSize: [224, 224, 3],
+  outputSize: 1000,
+  intro: '',
+  paperUrl: ''
+}, {
   modelName: 'Inception v2 (ONNX)',
   modelFormatName: 'inception_v2_onnx',
   modelSize: '45.0MB',
@@ -189,6 +199,49 @@ const imageClassificationModels = [{
   outputSize: 1000,
   intro: 'Inception-v2 is trained for the ImageNet Large Visual Recognition Challenge.',
   paperUrl: 'https://arxiv.org/abs/1512.00567'
+}, {
+  modelName: 'GoogleNet (ONNX)',
+  modelFormatName: 'googlenet_onnx',
+  modelSize: '',
+  modelFile: '../image_classification/model/googlenet.onnx',
+  labelsFile: '../image_classification/model/labels1000.txt',
+  inputSize: [224, 224, 3],
+  outputSize: 1000,
+  preOptions: {
+    channelScheme: 'BGR',
+  },
+  intro: '',
+  paperUrl: ''
+}, {
+  modelName: 'CaffeNet (ONNX)',
+  modelFormatName: 'caffenet_onnx',
+  modelSize: '',
+  modelFile: '../image_classification/model/caffenet.onnx',
+  labelsFile: '../image_classification/model/labels1000.txt',
+  inputSize: [224, 224, 3],
+  outputSize: 1000,
+  intro: '',
+  paperUrl: ''
+}, {
+  modelName: 'R-CNN ILSVRC13 (ONNX)',
+  modelFormatName: 'rcnn_ilsvrc13_onnx',
+  modelSize: '28.0MB',
+  modelFile: '../image_classification/model/rcnn_ilsvrc13.onnx',
+  labelsFile: '../image_classification/model/labels1000.txt',
+  inputSize: [224, 224, 3],
+  outputSize: 1000,
+  intro: '',
+  paperUrl: ''
+}, {
+  modelName: 'ZFNet-512 (ONNX)',
+  modelFormatName: 'zfnet512_onnx',
+  modelSize: '28.0MB',
+  modelFile: '../image_classification/model/zfnet512.onnx',
+  labelsFile: '../image_classification/model/labels1000.txt',
+  inputSize: [224, 224, 3],
+  outputSize: 1000,
+  intro: '',
+  paperUrl: ''
 }, {
   modelName: 'Densenet (ONNX)',
   modelFormatName: 'densenet_onnx',

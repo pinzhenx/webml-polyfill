@@ -211,6 +211,7 @@ function printOnnxModel(model) {
       case 'Gemm': {} break;
       case 'Sum': {} break;
       case 'Unsqueeze': {} break;
+      case 'LRN': {} break;
       default: {
         throw new Error(`    ${node.opType} is not supported.`);
       }
