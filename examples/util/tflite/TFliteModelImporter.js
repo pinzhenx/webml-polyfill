@@ -76,6 +76,12 @@ class TFliteModelImporter {
           type = this._nn.TENSOR_FLOAT32;
           typedArray = Float32Array;
         } break;
+        case tflite.TensorType.INT64: {
+          // dummy operand. not work on NNAPI
+          this._tensorIds.push(
+             this._addOperand({type: this._nn.TENSOR_INT32, dimensions: [1]}));
+          continue;
+        }
         case tflite.TensorType.INT32: {
           type = this._nn.TENSOR_INT32;
           typedArray = Int32Array;
@@ -112,6 +118,9 @@ class TFliteModelImporter {
     let opCode = this._rawModel.operatorCodes(operator.opcodeIndex()).builtinCode();
     if (this._options.softmax && opCode != tflite.BuiltinOperator.SOFTMAX)
       outputs = [this._operandIndex-1];
+    if (this.argmaxOutputs) {
+      outputs = this.argmaxOutputs;
+    }
     this._outputs = outputs;
     this._model.identifyInputsAndOutputs(inputs, outputs);
   }
@@ -349,6 +358,32 @@ class TFliteModelImporter {
         } break;
         case tflite.BuiltinOperator.MAXIMUM: {
           opType = this._nn.MAXIMUM;
+        } break;
+        case tflite.BuiltinOperator.ARG_MAX: {
+          inputs = [inputs[0]];
+
+          const nChannels = 21;
+          const convFilterTensor = new Float32Array(nChannels).fill(0);
+
+          inputs.push(this._addTensorFloat32(convFilterTensor, [1,1,1,nChannels]));
+          inputs.push(this._addTensorFloat32([0], [1]));
+          // paddings
+          inputs.push(this._addScalarInt32(0));
+          inputs.push(this._addScalarInt32(0));
+          inputs.push(this._addScalarInt32(0));
+          inputs.push(this._addScalarInt32(0));
+          // strides
+          inputs.push(this._addScalarInt32(1));
+          inputs.push(this._addScalarInt32(1));
+          inputs.push(this._addScalarInt32(this._nn.FUSED_RELU));
+
+          const outputTensor = graph.tensors(graph.outputsArray()[0]);
+          const outputDims = Array.from(outputTensor.shapeArray());
+          const tensorId = this._addOperand({type: this._nn.TENSOR_FLOAT32, dimensions: outputDims});
+          this._tensorIds.push(tensorId);
+          this.argmaxOutputs = outputs = [tensorId];
+
+          opType = this._nn.CONV_2D;
         } break;
         default: {
           throw new Error(`operator type ${opCode} is not supported.`);

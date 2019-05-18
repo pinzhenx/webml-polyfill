@@ -79,6 +79,8 @@
               <option value="deeplab_mobilenet_v2_321_atrous_tflite">Deeplab 321 Atrous (TFLite)</option>
               <option value="deeplab_mobilenet_v2_513_tflite">Deeplab 513 (TFLite)</option>
               <option value="deeplab_mobilenet_v2_513_atrous_tflite">Deeplab 513 Atrous (TFLite)</option>
+              <option value="deeplab_mobilenet_v2_513os16_tflite">Deeplab 513 OS16 (TFLite)</option>
+              <option value="deeplab_mobilenet_v2_513os16argmax_tflite">Deeplab 513 OS16 Argmax (TFLite)</option>
             </select>
           </div>
           <div>
@@ -89,10 +91,10 @@
           <div id="preferDiv" class="prefer-show">
             <h4>Preference</h4>
             <select id="preferSelect">
-              <option value="sustained" selected>SUSTAINED_SPEED</option>
+              <option value="sustained">SUSTAINED_SPEED</option>
               <option value="fast">FAST_SINGLE_ANSWER</option>
               <option value="low">LOW_POWER</option>
-              <option value="none">None</option>
+              <option value="none" selected>None</option>
             </select>
           </div>
           <div>
@@ -100,7 +102,7 @@
             1(warming up) + <input type="number" id="iteration" min="1" size="4" value="200"/>
           </div>
           <div class="row top-margin">
-            <div class="col-4" id="supported-ops-select">
+            <div class="col-4" id="supported-ops-select" style="visibility:hidden">
               <label><input id="eagerMode" type="checkbox"> Eager Mode</label>
               <br><br>
               <button id="selectAllOps">Select All</button>

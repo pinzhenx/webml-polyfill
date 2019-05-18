@@ -35,6 +35,8 @@ const segmentationModelArray = [
   'deeplab_mobilenet_v2_321_atrous_tflite',
   'deeplab_mobilenet_v2_513_tflite',
   'deeplab_mobilenet_v2_513_atrous_tflite',
+  'deeplab_mobilenet_v2_513os16_tflite',
+  'deeplab_mobilenet_v2_513os16argmax_tflite',
 ];
 
 let supportedModels = [];
