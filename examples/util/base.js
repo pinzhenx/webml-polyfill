@@ -230,6 +230,17 @@ const imageClassificationModels = [{
   intro: 'Deep residual networks have emerged as a family of extremely deep architectures showing compelling accuracy and nice convergence behaviors. It reports improved results using a 1001-layer ResNet on CIFAR-10 (4.62% error) and CIFAR-100, and a 200-layer ResNet on ImageNet.',
   paperUrl: 'https://arxiv.org/abs/1603.05027'
 }, {
+  modelName: 'Inception v1 (ONNX)',
+  format: 'ONNX',
+  modelFormatName: 'inception_v1_onnx',
+  modelSize: '28.0MB',
+  modelFile: '../image_classification/model/inception_v1.onnx',
+  labelsFile: '../image_classification/model/ilsvrc2012labels.txt',
+  inputSize: [224, 224, 3],
+  outputSize: 1000,
+  intro: '',
+  paperUrl: ''
+}, {
   modelName: 'Inception v2 (ONNX)',
   modelFormatName: 'inception_v2_onnx',
   modelSize: '45.0MB',

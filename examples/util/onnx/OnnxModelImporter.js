@@ -425,6 +425,31 @@ class OnnxModelImporter {
 
           opCode = isDepthWiseConv ? this._nn.DEPTHWISE_CONV_2D : this._nn.CONV_2D;
         } break;
+        case 'LRN': {
+          // Add inputs
+          console.log(`  inputs: [${node.input}]`);
+          const input = node.input[0];
+
+          let alpha  = getAttributeValue(node, 'alpha',  0.0001);
+          let beta   = getAttributeValue(node, 'beta',   0.75);
+          let bias = getAttributeValue(node, 'bias', 1.0);
+          let size = getAttributeValue(node, 'size');
+
+          inputs.push(this._getTensorIdByName(input));
+          inputs.push(this._addScalarInt32(size));
+          inputs.push(this._addScalarFloat32(bias));
+          inputs.push(this._addScalarFloat32(alpha));
+          inputs.push(this._addScalarFloat32(beta));
+          
+          // Add outputs
+          const output = node.output[0];
+          const inputDims = this._getTensorTypeByName(input).dimensions;
+          const outputType = {type: this._nn.TENSOR_FLOAT32, dimensions: inputDims};
+          const outputId = this._addNewTensorOperand(output, outputType);
+          outputs.push(outputId);
+          console.log(`  output ${output}: [${inputDims}]`);
+          opCode = this._nn.LOCAL_RESPONSE_NORMALIZATION;
+        } break;
         case 'BatchNormalization': {
           // Add inputs
           console.log(`  inputs: [${node.input}]`);
